@@ -7,9 +7,13 @@ An end-to-end LLM training pipeline covering all four stages of modern language 
 | Stage | Model | Dataset | Val Loss | Notes |
 |-------|-------|---------|----------|-------|
 | Pretrain (baseline) | 30M GPT | TinyStories | 1.6665 | 5000 steps, zero overfitting |
-| Pretrain (exp1: high LR) | 30M GPT | TinyStories | 1.7782 | 2000 steps, lr=6e-4 |
-| SFT | Qwen 2.5 1.5B | TBD | TBD | QLoRA, coming in Phase 2 |
-| DPO | Qwen 2.5 1.5B | TBD | TBD | Coming in Phase 3 |
+| Pretrain (exp 1: high LR) | 30M GPT | TinyStories | 1.7782 | 2000 steps, lr=6e-4 |
+| SFT (LoRA r=64) | Qwen2.5-0.5B | CodeAlpaca-20k (5k subset) | 0.9122 | QLoRA, 2 epochs |
+| SFT (LoRA r=8) | Qwen2.5-0.5B | CodeAlpaca-20k (5k subset) | **0.8903** | best run -- 8x fewer adapter params |
+| DPO | Qwen2.5-0.5B | TBD | TBD | Coming in Phase 3 |
+
+Val losses are only comparable *within* a stage. The pretraining and SFT numbers come from
+different models, tokenizers, and objectives, so 0.89 is not "better than" 1.67.
 
 ## Pipeline Overview
 
@@ -18,7 +22,7 @@ Phase 1: Pretraining
   TinyStories dataset → tokenize → train 30M GPT from scratch → checkpoint
 
 Phase 2: Supervised Fine-Tuning (SFT)
-  Qwen 2.5 1.5B base → QLoRA → domain instruction data → SFT checkpoint
+  Qwen2.5-0.5B base → QLoRA → CodeAlpaca instruction data → SFT checkpoint
 
 Phase 3: Post-Training Alignment (DPO)
   SFT checkpoint → preference dataset → DPO → aligned checkpoint
@@ -63,8 +67,15 @@ step 5000:   1.67  (train: 1.6685, val: 1.6665 -- zero overfitting)
 |-----|--------|----------------------|-------------|
 | Baseline | lr=3e-4 | ~1.90 | Stable, smooth curve |
 | Exp 1 | lr=6e-4 | 1.7782 | Faster early descent, slightly larger train/val gap |
-| Exp 2 | grad_accum=16 (130k tokens/step) | TBD | Smoother curve, slower wall-clock |
-| Exp 3 | block_size=128 | TBD | Faster per iteration, slightly higher loss |
+| Exp 2 | grad_accum=16 (131k tokens/step) | 1.8524 | Beats baseline, but saw 2x the tokens -- confounded, see note |
+| Exp 3 | block_size=128 | 2.0949 | Faster per iteration, clearly worse loss -- less context to predict from |
+
+All runs are capped at 2000 optimizer steps, which makes them steps-matched but **not**
+compute-matched -- and that confounds Exp 2. Doubling gradient accumulation doubles
+tokens per step, so Exp 2 saw ~262M tokens against the baseline's ~131M. Its better loss
+is partly just more data, not purely a larger-batch effect. Exp 3 is the cleaner result:
+halving the context to 128 tokens is strictly less to condition on, and the loss degrades
+accordingly.
 
 **Key concepts demonstrated:**
 - Next-token prediction as the universal pretraining objective
@@ -77,15 +88,92 @@ step 5000:   1.67  (train: 1.6685, val: 1.6665 -- zero overfitting)
 
 ## Phase 2: Supervised Fine-Tuning (SFT)
 
-*Coming soon*
+Fine-tuned Qwen2.5-0.5B (base, not instruct, so the SFT effect is visible) on code
+instruction data using QLoRA -- a 4-bit NF4 base with trainable LoRA adapters -- via
+`trl`'s `SFTTrainer`.
 
-Fine-tuning Qwen 2.5 1.5B on domain-specific instruction data using QLoRA (4-bit quantization + LoRA adapters) via the `trl` SFTTrainer.
+**Setup:**
+- Model: `Qwen/Qwen2.5-0.5B`, 4-bit NF4 with double quantization, fp16 compute
+- Adapters: LoRA on all attention and MLP projections (`q/k/v/o_proj`, `gate/up/down_proj`)
+- Dataset: CodeAlpaca-20k, 5000 train / 1002 val (5% held out, seed 42)
+- Prompt format: Alpaca-style `### Instruction:` / `### Response:`
+- Training: 2 epochs, lr 2e-4 cosine with warmup, batch 2 x grad accum 16 (32 effective), `max_length=256`, `adamw_torch`
+- Hardware: single T4, 1.5-1.7 GB peak VRAM, ~56 min per full run
 
-**Planned:**
-- Model: Qwen/Qwen2.5-1.5B (base, not instruct)
-- Method: QLoRA -- 4-bit NF4 base + LoRA rank 64 adapters
-- Dataset: TBD domain instruction data
-- Ablations: LoRA rank (8 vs 64), dataset size
+**Baseline run (LoRA r=64):**
+```
+step   train    eval
+  50  0.9639       -
+ 100  0.8790       -
+ 150  0.8674       -
+ 200  0.7031  0.9200
+ 250  0.6819       -
+ 300  0.6728       -
+ 314       -  0.9122   <- best
+```
+
+**Ablations:**
+
+| Run | LoRA r | Train examples | Trainable params | Best eval loss | Final train loss | Train/eval gap |
+|-----|--------|----------------|------------------|----------------|------------------|----------------|
+| Baseline | 64 | 5000 | 35,192,832 (6.65%) | 0.9122 | 0.6728 | +0.2394 |
+| Rank ablation | 8 | 5000 | 4,399,104 (0.83%) | **0.8903** | 0.7843 | **+0.1060** |
+| Data ablation | 64 | 500 | 35,192,832 (6.65%) | 0.9495 | 0.6299 | +0.3196 |
+
+**Rank 8 beat rank 64 with 8x fewer adapter parameters.** The train/eval gap explains why:
+r=64 puts 6.65% of a 0.5B model into trainable adapters, which is more capacity than 5000
+examples can support, so the surplus goes into memorizing the training set -- train loss
+0.67 against eval 0.91. Rank 8 fits the training data *worse* (0.78) and generalizes
+*better* (0.89). This is the low-intrinsic-dimensionality argument from the LoRA paper,
+plus a regularization effect from simply having less capacity to overfit with.
+
+**The 500-example run is a textbook overfitting curve.** Lowest train loss, worst eval
+loss, widest gap -- and its best eval landed at step 15 of 32, meaning val loss turned
+upward halfway through and kept climbing.
+
+*Caveat on the rank result:* the baseline was measured at only 2 eval points (`eval_steps=200`
+on a 314-step run) while the ablations use ~8, and every run is a single seed. A 0.022 delta
+between an under-sampled curve and a well-sampled one is suggestive, not conclusive.
+
+**Base vs SFT:** 20 fixed held-out prompts -- 15 code generation, 3 explanation, 1
+deliberately underspecified, 1 ill-posed -- run through both models with greedy decoding
+and an identical template. Full side-by-side output in `results/sft_qualitative.md`.
+
+| Metric | Base | SFT |
+|--------|------|-----|
+| Mean response length (chars) | 304 | 160 |
+| Ran on into a hallucinated next `### Instruction:` block | 0/20 | 0/20 |
+
+The leak metric found nothing, which is itself worth reporting: Qwen2.5-0.5B base already
+terminates on its own in this format rather than rambling, so "SFT taught the model to
+stop" is *not* what happened here. The measurable change is response length -- SFT answers
+are about half as long, consistent with terse on-task completions replacing discursive ones.
+
+Sample SFT output:
+```
+### Instruction:
+Write a Python function that takes a list of numbers and returns the sum of all even numbers.
+
+### Response:
+def even_sum(numbers):
+    even_sum = 0
+    for num in numbers:
+        if num % 2 == 0:
+            even_sum += num
+    return even_sum
+```
+
+**Design decisions:**
+- **Alpaca template, not Qwen's chat template.** The base checkpoint has no instruction-tuned
+  chat semantics to inherit, so a plain delimiter format keeps the comparison honest and
+  avoids a train/eval formatting mismatch -- the failure mode that silently destroys SFT
+  performance when the fine-tune and the eval disagree on special tokens.
+- **Loss over the full sequence, not completion-only.** TRL's default with `dataset_text_field`
+  trains on instruction tokens too. Acceptable here since instructions are short relative to
+  responses, but masking the prompt is the more standard choice.
+- **Eval frequency scaled to run length** in the ablation harness. The baseline's
+  `eval_steps=200` produced two points on a 314-step run, too coarse to see where val loss
+  turns -- which is exactly what the 500-example run needed in order to be interpretable.
 
 ## Phase 3: Post-Training Alignment (DPO)
 
@@ -119,6 +207,11 @@ llm-training-pipeline/
 │   └── tinystories/
 │       ├── train.bin       # 925MB tokenized training data
 │       └── val.bin         # 9.5MB tokenized val data
+├── results/                # metrics and generations (committed)
+│   ├── sft_r64_log.json    # baseline train/eval loss history
+│   ├── sft_*_log.json      # one per ablation run
+│   ├── sft_ablations.md    # ablation comparison table
+│   └── sft_qualitative.md  # 20-prompt base vs SFT side-by-side
 ├── checkpoints/            # saved model checkpoints (gitignored)
 ├── model.py                # GPT architecture (based on nanoGPT)
 ├── configurator.py         # config override utility (from nanoGPT)
@@ -156,7 +249,7 @@ All training runs on Google Colab Pro (NVIDIA T4, 15GB VRAM).
 | Phase | Estimated Cost |
 |-------|---------------|
 | Pretraining (30M, 5000 steps) | ~$2-5 |
-| SFT (QLoRA, 1.5B) | ~$5-10 |
+| SFT (QLoRA, 0.5B, 3 runs) | ~$5-10 |
 | DPO | ~$5-10 |
 | Evaluation | ~$3-5 |
 | **Total** | **~$15-30** |
