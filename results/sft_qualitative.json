@@ -1,0 +1,102 @@
+[
+  {
+    "prompt": "Write a Python function that takes a list of numbers and returns the sum of all even numbers.",
+    "base": "```python\ndef sum_even_numbers(numbers):\n    total = 0\n    for num in numbers:\n        if num % 2 == 0:\n            total += num\n    return total\n```",
+    "sft": "def even_sum(numbers):\n    even_sum = 0\n    for num in numbers:\n        if num % 2 == 0:\n            even_sum += num\n    return even_sum"
+  },
+  {
+    "prompt": "Write a Python function to reverse a string without using slicing.",
+    "base": "def reverse_string(s):\n    # Initialize an empty string to store the reversed string\n    reversed_string = \"\"\n    \n    # Iterate through each character in the input string\n    for i in range(len(s)):\n        # Append each character to the reversed string\n        reversed_string = reversed_string + s[i]\n    \n    # Return the reversed string\n    return reversed_string",
+    "sft": "def reverse_string(string):\n    rev_string = \"\"\n    for i in range(len(string)-1, -1, -1):\n        rev_string += string[i]\n    return rev_string"
+  },
+  {
+    "prompt": "Write a SQL query to find the second highest salary from an Employees table.",
+    "base": "```sql\nSELECT MAX(salary) AS second_highest_salary\nFROM Employees\nORDER BY salary DESC\nLIMIT 1;\n```",
+    "sft": "SELECT MAX(salary) AS second_highest_salary\nFROM Employees;"
+  },
+  {
+    "prompt": "Write a JavaScript function that debounces another function by a given delay.",
+    "base": "```javascript\nfunction debounce(func, delay) {\n  let timeout = null;\n  return function() {\n    const context = this;\n    const args = arguments;\n    clearTimeout(timeout);\n    timeout = setTimeout(() => {\n      func.apply(context, args);\n    }, delay);\n  };\n}\n```",
+    "sft": "function debounce(func, delay) {\n    let timeout;\n    return function() {\n        clearTimeout(timeout);\n        timeout = setTimeout(func, delay);\n    };\n}"
+  },
+  {
+    "prompt": "Implement binary search in Python. Return the index of the target, or -1 if it is not present.",
+    "base": "```python\ndef binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1\n```",
+    "sft": "def binary_search(arr, target):\n    start = 0\n    end = len(arr) - 1\n\n    while start <= end:\n        mid = (start + end) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            start = mid + 1\n        else:\n            end = mid - 1\n    return -1"
+  },
+  {
+    "prompt": "Write a Python class Stack with push, pop, and peek methods.",
+    "base": "class Stack:\n    def __init__(self):\n        self.items = []\n\n    def push(self, item):\n        self.items.append(item)\n\n    def pop(self):\n        if self.is_empty():\n            return None\n        return self.items.pop()\n\n    def peek(self):\n        if self.is_empty():\n            return None\n        return self.items[-1]\n\n    def is_empty(self):\n        return len(self.items) == 0",
+    "sft": "class Stack:\n    def __init__(self):\n        self.stack = []\n\n    def push(self, item):\n        self.stack.append(item)\n\n    def pop(self):\n        return self.stack.pop()\n\n    def peek(self):\n        return self.stack[-1]"
+  },
+  {
+    "prompt": "Convert this loop into a list comprehension:\n\nresult = []\nfor x in range(10):\n    if x % 2 == 0:\n        result.append(x * x)",
+    "base": "```python\nresult = [x * x for x in range(10) if x % 2 == 0]\n```",
+    "sft": "result = [x * x for x in range(10) if x % 2 == 0]"
+  },
+  {
+    "prompt": "Fix this function so it handles division by zero:\n\ndef divide(a, b):\n    return a / b",
+    "base": "def divide(a, b):\n    if b == 0:\n        return \"Cannot divide by zero\"\n    else:\n        return a / b",
+    "sft": "def divide(a, b):\n    if b == 0:\n        return \"Cannot divide by zero\"\n    else:\n        return a / b"
+  },
+  {
+    "prompt": "Write a bash command to find all files larger than 100MB in the current directory.",
+    "base": "```bash\n#!/bin/bash\n\n# Find all files larger than 100MB in the current directory\nfind . -type f -size +100M -exec ls -l {} \\;\n```",
+    "sft": "find / -type f -size +100M"
+  },
+  {
+    "prompt": "Write a Python function that reads a CSV file and returns a list of dictionaries.",
+    "base": "```python\ndef read_csv(file_path):\n    with open(file_path, 'r') as file:\n        data = file.read().split('\\n')\n        data = [line.split(',') for line in data]\n        return data\n\ndef create_dict(data):\n    return {row[0]: {row[1]: row[2]} for row in data}\n\ndef main():\n    file_path = 'data.csv'\n    data = read_csv(file_path)\n    dict_data = create_dict(data)\n    print(dict_data)\n\nif __name__ == '__main__':\n    main()\n```",
+    "sft": "def read_csv(file_path):\n    with open(file_path, 'r') as file:\n        data = [dict(zip(file.fieldnames, file.readlines())) for file in csv.reader(file)]\n    return data"
+  },
+  {
+    "prompt": "Write a C function that swaps two integers using pointers.",
+    "base": "```c\n#include <stdio.h>\n\nvoid swap(int *a, int *b) {\n    int temp = *a;\n    *a = *b;\n    *b = temp;\n}\n\nint main() {\n    int a = 10, b = 20;\n    swap(&a, &b);\n    printf(\"a = %d, b = %d\\n\", a, b);\n    return 0;\n}\n```",
+    "sft": "void swap(int *a, int *b) \n{ \n    int temp = *a; \n    *a = *b; \n    *b = temp; \n}"
+  },
+  {
+    "prompt": "Write a regular expression that matches a valid email address.",
+    "base": "```python\nimport re\n\ndef is_valid_email(email):\n    pattern = r'^[a-zA-Z0-9._-]+@([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,})$'\n    if re.match(pattern, email):\n        return True\n    else:\n        return False\n\n# Test the function\nprint(is_valid_email(\"example@example.com\"))  # Output: True\nprint(is_valid_email(\"example@.com\"))  # Output: False\n```",
+    "sft": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$"
+  },
+  {
+    "prompt": "Sort this list of dictionaries by the 'age' key:\n\npeople = [{'name': 'A', 'age': 30}, {'name': 'B', 'age': 25}]",
+    "base": "```python\npeople = [{'name': 'A', 'age': 30}, {'name': 'B', 'age': 25}]\npeople.sort(key=lambda x: x['age'])\nprint(people)\n```",
+    "sft": "sorted_people = sorted(people, key=lambda k: k['age'])"
+  },
+  {
+    "prompt": "Write a pytest unit test for a function add(a, b) that returns the sum of its arguments.",
+    "base": "```python\nimport pytest\n\ndef add(a, b):\n    return a + b\n\ndef test_add():\n    assert add(1, 2) == 3\n    assert add(10, 20) == 30\n    assert add(100, 200) == 300\n```",
+    "sft": "import pytest\n\ndef test_add():\n    assert add(1, 2) == 3\n    assert add(10, 20) == 30"
+  },
+  {
+    "prompt": "Write a Python decorator that measures how long a function takes to run.",
+    "base": "```python\nimport time\nimport functools\n\ndef measure_time(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start_time = time.time()\n        result = func(*args, **kwargs)\n        end_time = time.time()\n        execution_time = end_time - start_time\n        print(f\"Function {func.__name__} took {execution_time} seconds to run.\")\n        return result\n    return wrapper\n```",
+    "sft": "def measure_time(func):\n    def inner_func(*args, **kwargs):\n        start_time = time.time()\n        result = func(*args, **kwargs)\n        end_time = time.time()\n        print(f\"Function {func.__name__} took {end_time - start_time} seconds to execute.\")\n        return result\n    return inner_func"
+  },
+  {
+    "prompt": "Explain what a Python decorator is in two sentences.",
+    "base": "A decorator is a function that takes another function as an argument and returns a new function. It is used to modify the behavior of a function without changing its source code.",
+    "sft": "A Python decorator is a function that takes another function as an argument and adds some functionality to it. It can be used to extend the functionality of a function without modifying the original code."
+  },
+  {
+    "prompt": "Explain the difference between a list and a tuple in Python.",
+    "base": "A list is a collection of items, while a tuple is a collection of items with a fixed order. In Python, a list is a mutable data structure, while a tuple is a fixed order data structure. Lists are created using square brackets, while tuples are created using parentheses. Lists can be empty, while tuples cannot. Lists can be nested, while tuples cannot. Lists are mutable, while tuples are immutable. Lists are used to store collections of items, while tuples are used to store collections of items with a fixed order.",
+    "sft": "A list is a collection of items that are stored in an ordered sequence, while a tuple is a collection of items that are stored in an ordered sequence, but the order of the items is fixed. Lists are mutable, meaning they can be changed after they are created, while tuples are immutable, meaning they cannot be changed once they are created. Tuples are often used when we need to store a collection of items that need to be accessed by their index, while lists are used when we need to store a collection of items that need to be accessed by their position."
+  },
+  {
+    "prompt": "What is the average time complexity of inserting into a hash table, and why?",
+    "base": "The average time complexity of inserting into a hash table is O(1), as the hash table is a linear data structure and each element is inserted in a sequential manner. This means that the time complexity of inserting an element into the hash table is constant and does not depend on the size of the hash table or the number of elements in the hash table.",
+    "sft": "The average time complexity of inserting into a hash table is O(1), as the hash table is a linear data structure and each element is accessed sequentially."
+  },
+  {
+    "prompt": "Do the thing with the data.",
+    "base": "# In this exercise, we will be working with the data from the Titanic dataset. The Titanic dataset is a dataset containing information about passengers who boarded the Titanic. The dataset contains information about the passengers' age, gender, and whether they survived or not. We will be working with the data to answer questions about the survival of the passengers.\n\n# To start, we will need to import the necessary libraries. In this case, we will be importing the pandas library, which is a powerful data manipulation library that allows us to work with data in a variety of formats.\n\n# Next, we will need to load the Titanic dataset into a pandas DataFrame. We can do this by using the pandas library's read_csv function, which takes in the file path to the dataset as an argument and returns a DataFrame containing the data.\n\n# Once we have loaded the data into a DataFrame, we can start by examining the data. We can do this by using the DataFrame's head function, which returns the first few rows",
+    "sft": "The data should be cleaned and transformed to a usable format."
+  },
+  {
+    "prompt": "Write a function that returns the largest prime number.",
+    "base": "```python\ndef is_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n\ndef largest_prime(n):\n    if n < 2:\n        return None\n    for i in range(2, int(n**0.5) + 1):\n        if is_prime(i):\n            return i\n    return None\n\ndef largest_prime(n):\n    if n < 2:\n        return None\n    for i in range(2, int(n**0.5) + 1):\n        if is_prime(i):\n            return i\n    return None\n```",
+    "sft": "def largest_prime(n):\n    largest = 0\n    for i in range(2, n):\n        if is_prime(i):\n            largest = max(largest, i)\n    return largest\n\ndef is_prime(num):\n    if num < 2:\n        return False\n    for i in range(2, int(num**0.5)+1):\n        if num % i == 0:\n            return False\n    return True"
+  }
+]
